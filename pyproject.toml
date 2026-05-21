@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mathsearch"
 version = "1.0.0"
-description = "An advanced mathematical search engine with BM25 ranking and semantic re-ranking"
+description = "A mathematical search engine with BM25 ranking and PageRank authority scoring"
 readme = "README.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
@@ -16,7 +16,7 @@ keywords = [
     "search",
     "information-retrieval",
     "bm25",
-    "semantic-search",
+    "pagerank",
     "mathematics",
     "wikipedia"
 ]
@@ -42,13 +42,10 @@ classifiers = [
     "Topic :: Text Processing",
 ]
 dependencies = [
-    "Flask>=2.3.3",
+    "Flask>=2.3.0",
     "requests>=2.31.0",
-    "beautifulsoup4>=4.12.2",
-    "numpy>=1.24.3",
-    "pyspellchecker>=0.7.0",
-    "sentence-transformers>=2.2.2",
-    "torch>=2.0.1",
+    "beautifulsoup4>=4.12.0",
+    "numpy>=1.24.0",
 ]
 
 [project.optional-dependencies]
@@ -58,8 +55,8 @@ dev = [
     "flake8>=6.0",
     "mypy>=1.0",
     "pytest-cov>=4.0",
-    "sphinx>=5.0",
 ]
+
 test = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
@@ -72,7 +69,7 @@ Issues = "https://github.com/yourusername/Search-Engine/issues"
 Documentation = "https://github.com/yourusername/Search-Engine#readme"
 
 [tool.setuptools]
-packages = ["mathsearch"]
+py-modules = ["main", "search_engine"]
 
 [tool.black]
 line-length = 100
@@ -80,7 +77,6 @@ target-version = ['py38', 'py39', 'py310', 'py311']
 include = '\.pyi?$'
 extend-exclude = '''
 /(
-  # directories
   \.eggs
   | \.git
   | \.hg

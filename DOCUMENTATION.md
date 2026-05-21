@@ -1,8 +1,9 @@
-# MathSearch - Complete Documentation
+# MathSearch — Complete Documentation
 
-A sophisticated search engine optimized for mathematical content with BM25 ranking, semantic re-ranking, and intelligent query expansion.
+A streamlined search engine optimized for mathematical content with BM25 ranking, PageRank authority scoring, and intelligent query expansion.
 
 ## Table of Contents
+
 1. [Features & Overview](#features--overview)
 2. [Architecture](#architecture)
 3. [Installation & Setup](#installation--setup)
@@ -19,119 +20,156 @@ A sophisticated search engine optimized for mathematical content with BM25 ranki
 ### Core Features
 
 - **BM25 Ranking**: Industry-standard information retrieval ranking algorithm
-- **Hybrid Semantic Re-ranking**: Optional two-stage retrieval using sentence transformers for semantic similarity
-- **Query Expansion**: Spell correction, synonym expansion, and optional LLM-based expansion
-- **Intelligent Snippet Extraction**: Context-aware snippets with relevant sentences around matches
 - **PageRank Scoring**: Link-based authority scoring integrated into results
-- **Modern Web Interface**: Beautiful, responsive UI built with Flask
-- **Mathematical Synonyms**: Domain-specific synonym expansion for math terminology
+- **Query Expansion**: Domain-specific synonym expansion for math terminology
+- **Intelligent Snippet Extraction**: Context-aware snippets with highlighted matches
+- **Modern Web Interface**: Responsive UI built with Flask
+- **Lightweight**: No ML models — ~10 MB dependencies, ~50 MB RAM at runtime
 
 ---
 
 ## Architecture
 
-### Module Dependencies
+### File Structure
 
 ```
-app.py (Flask Web App)
-├── search.py (Search Engine)
-│   ├── database.py (Data Access)
-│   ├── query_expansion.py (Query Processing)
-│   └── snippets.py (Snippet Extraction)
-├── config.py (Configuration)
-└── (HTML/CSS templates embedded)
-
-Database Management
-├── database.py (SQLite Interface)
-├── indexer.py (Index Building)
-│   ├── crawler.py (Web Scraping)
-│   └── database.py
-├── pagerank.py (Authority Scoring)
-│   ├── database.py
-│   └── crawler.py
-└── init.py (Setup Script)
+Search-Engine/
+├── main.py            — Flask web app, CLI, and auto-setup (~270 lines)
+├── search_engine.py   — All core logic (~450 lines)
+├── requirements.txt   — 4 dependencies
+├── search_engine.db   — SQLite database (auto-created on first run)
+├── start.sh           — One-click start for Linux/macOS
+├── start.bat          — One-click start for Windows
+├── README.md          — Project overview
+├── README.txt         — Plain-text quick reference
+├── HOW_TO_RUN.md      — Step-by-step setup guide
+├── DOCUMENTATION.md   — This file
+└── LICENSE            — MIT License
 ```
 
-### Core Components
+### Module Layout
 
-- **app.py**: Flask web application with UI and search endpoints
-- **search.py**: Two-stage BM25 and semantic search implementation
-- **database.py**: SQLite database management with normalized schema
-- **config.py**: Centralized configuration for all tunable parameters
-- **crawler.py**: Web crawler for Wikipedia math pages
-- **indexer.py**: Inverted index builder with BM25 support
-- **pagerank.py**: PageRank computation for link graph authority scoring
-- **snippets.py**: Intelligent snippet extraction from documents
-- **query_expansion.py**: Spell correction and synonym expansion
-- **init.py**: Database initialization and crawler runner
+```
+main.py
+├── Flask app (routes: / and /search)
+├── setup_database()      — Interactive first-run setup
+└── main()                — Entry point; CLI command dispatcher
+
+search_engine.py
+├── Configuration         — DB_PATH, BM25_K1, BM25_B, SNIPPET_LENGTH, MATH_SYNONYMS
+├── Database              — init_db(), save_to_db()
+├── Crawler               — crawl(), is_valid_wiki_url()
+├── PageRank              — compute_pagerank()
+├── Tokenization          — tokenize(), expand_query()
+├── Search                — search(), compute_bm25()
+├── Snippets              — extract_snippet()
+└── Utilities             — get_stats()
+```
+
+### Data Flow
+
+```
+Stage 1 — Crawl
+  crawl(seed_url, max_pages)
+  → Downloads Wikipedia pages via requests + BeautifulSoup
+  → Builds link_graph {url: [linked_urls]} and page_content {url: text}
+
+Stage 2 — Index & PageRank
+  save_to_db(page_content, link_graph)
+  → Tokenizes text, counts term frequencies
+  → Writes documents and inverted_index tables
+  → Calls compute_pagerank() → updates pagerank column
+
+Stage 3 — Search
+  search(query, top_k)
+  → expand_query() adds synonyms
+  → Inverted index lookup → candidate doc set
+  → compute_bm25() for each candidate
+  → Final Score = BM25 × (1 + PageRank × 10)
+  → extract_snippet() for top results
+  → Returns list of result dicts
+```
 
 ### Database Schema
 
-#### Documents Table
+#### `documents` Table
 
 ```sql
 CREATE TABLE documents (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    url TEXT UNIQUE NOT NULL,
-    title TEXT,
-    content TEXT,
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    url        TEXT UNIQUE NOT NULL,
+    title      TEXT,
+    content    TEXT,
     doc_length INTEGER DEFAULT 0,
-    pagerank REAL DEFAULT 0.0
+    pagerank   REAL    DEFAULT 0.0
 )
 ```
 
-**Fields:**
-- `id`: Unique document identifier
-- `url`: Document URL (unique constraint)
-- `title`: Page title (extracted from URL or content)
-- `content`: Full text content of the page
-- `doc_length`: Word count (used for BM25 normalization)
-- `pagerank`: Computed authority score
+| Column | Description |
+|---|---|
+| `id` | Auto-increment primary key |
+| `url` | Wikipedia page URL (unique) |
+| `title` | Page title derived from URL |
+| `content` | Full plain-text page content |
+| `doc_length` | Word count — used in BM25 length normalization |
+| `pagerank` | Computed authority score |
 
-**Indexes:**
-- Primary key on `id`
-- Unique constraint on `url`
-
-#### Inverted Index Table
+#### `inverted_index` Table
 
 ```sql
 CREATE TABLE inverted_index (
-    word TEXT NOT NULL,
+    word   TEXT    NOT NULL,
     doc_id INTEGER NOT NULL,
-    tf REAL NOT NULL,
-    FOREIGN KEY (doc_id) REFERENCES documents(id),
-    PRIMARY KEY (word, doc_id)
+    tf     REAL    NOT NULL,
+    PRIMARY KEY (word, doc_id),
+    FOREIGN KEY (doc_id) REFERENCES documents(id)
 )
 ```
 
-**Fields:**
-- `word`: Indexed term (lowercase)
-- `doc_id`: Document containing the term
-- `tf`: Term frequency in the document
+| Column | Description |
+|---|---|
+| `word` | Indexed term (lowercase, 2+ characters) |
+| `doc_id` | Document containing the term |
+| `tf` | Raw term frequency count |
 
-**Indexes:**
-- Primary key on `(word, doc_id)`
-- Index on `word` for efficient lookups
-- Index on `doc_id` for document retrieval
+**Indexes:** `idx_word` on `word`; `idx_doc_id` on `doc_id`.
 
 ### BM25 Ranking Algorithm
 
-The BM25 (Best Matching 25) algorithm scores documents based on term importance.
-
-**Formula:**
 ```
-score = Σ IDF(term) * (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * (|D| / avgdl)))
+score = Σ IDF(t) × (tf × (k1 + 1)) / (tf + k1 × (1 − b + b × |D| / avgdl))
+
+IDF(t) = log((N − df + 0.5) / (df + 0.5) + 1)
 ```
 
-**Components:**
-- `IDF(term)` = log((N - df + 0.5) / (df + 0.5) + 1)
-- `tf` = term frequency in document
-- `|D|` = document length
-- `avgdl` = average document length
-- `k1` = 1.5 (term frequency saturation)
-- `b` = 0.75 (length normalization)
+| Symbol | Meaning | Default |
+|---|---|---|
+| `tf` | Term frequency in document | — |
+| `|D|` | Document length (words) | — |
+| `avgdl` | Average document length | — |
+| `N` | Total number of documents | — |
+| `df` | Documents containing the term | — |
+| `k1` | Term frequency saturation | 1.5 |
+| `b` | Length normalization | 0.75 |
 
-**Time Complexity:** O(k * M) where k = number of query terms, M = average inverted list length
+### Final Scoring
+
+```
+Final Score = BM25(query, doc) × (1 + PageRank × 10)
+```
+
+PageRank acts as a multiplicative boost — authoritative pages score higher for the same keyword relevance.
+
+### PageRank Algorithm
+
+Uses the standard iterative power-method:
+
+```
+M = d × A + (1 − d) / n × ones(n, n)
+ranks = M @ ranks   (repeat until convergence, max 50 iterations)
+```
+
+where `A` is the column-normalized adjacency matrix, `d = 0.85`, and convergence threshold is `1e-6`.
 
 ---
 
@@ -140,65 +178,33 @@ score = Σ IDF(term) * (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * (|D| / avgdl)))
 ### Prerequisites
 
 - Python 3.8+
-- pip (Python package manager)
-- Git
+- pip
 
 ### Quick Setup
 
-#### Windows
-
 ```bash
 git clone <repository-url>
 cd Search-Engine
-setup.bat
-```
-
-#### Linux/macOS
-
-```bash
-git clone <repository-url>
-cd Search-Engine
-bash setup.sh
-```
-
-#### Manual Setup
-
-```bash
-# Clone repository
-git clone <repository-url>
-cd Search-Engine
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Initialize database
-python init.py --no-crawl
+python main.py
 ```
 
-### Using Makefile Commands
+Type **Y** when prompted on first run. Setup takes ~2–3 minutes for 100 pages.
+
+### One-Click Scripts
 
 ```bash
-# Install base dependencies
-make install
+bash start.sh      # Linux / macOS
+start.bat          # Windows
+```
 
-# Install with development tools
-make dev-install
+### Dependencies
 
-# Run the web application
-make run
-
-# Run linting
-make lint
-
-# Format code
-make format
-
-# Clean cache files
-make clean
+```
+Flask>=2.3.0
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+numpy>=1.24.0
 ```
 
 ---
@@ -207,336 +213,223 @@ make clean
 
 ### Code Style
 
-We follow Python best practices:
+- **Formatting**: `black` with line length 100
+- **Linting**: `flake8 --max-line-length=100`
+- **Type hints**: use where practical; checked with `mypy`
 
-- **Formatting**: Use `black` with line length 100
-  ```bash
-  make format
-  # or: black *.py --line-length=100
-  ```
-
-- **Linting**: Run `flake8` before committing
-  ```bash
-  make lint
-  # or: flake8 *.py --max-line-length=100
-  ```
-
-- **Type hints**: Use type hints where possible (checked with mypy)
-
-### Development Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/Search-Engine.git
-   cd Search-Engine
-   ```
-
-2. **Create a virtual environment**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-3. **Install development dependencies**
-   ```bash
-   make dev-install
-   # or: pip install -r requirements.txt && pip install pytest black flake8 mypy
-   ```
-
-4. **Initialize the database**
-   ```bash
-   python init.py --no-crawl
-   ```
+```bash
+pip install black flake8 mypy
+black main.py search_engine.py --line-length=100
+flake8 main.py search_engine.py --max-line-length=100
+```
 
 ### Commit Messages
 
-- Use clear, descriptive commit messages
-- Start with a verb (Add, Fix, Update, Refactor, etc.)
+- Start with a verb: `Add`, `Fix`, `Update`, `Refactor`
 - Keep the first line under 50 characters
-- Reference issues when applicable: `Fixes #123`
+- Reference issues when applicable: `Fixes #42`
 
 ### Pull Request Process
 
-1. **Create a feature branch**
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
+```bash
+git checkout -b feature/your-feature-name
+# make changes
+git add .
+git commit -m "Add: descriptive message"
+git push origin feature/your-feature-name
+# open Pull Request on GitHub
+```
 
-2. **Make your changes**
-   - Keep changes focused and related
-   - Add docstrings to new functions
-   - Update documentation if adding features
+### Adding Features
 
-3. **Run tests and linting**
-   ```bash
-   make lint
-   make format
-   ```
+All search logic lives in `search_engine.py`. The key extension points are:
 
-4. **Commit and push**
-   ```bash
-   git add .
-   git commit -m "Add: descriptive message"
-   git push origin feature/your-feature-name
-   ```
-
-5. **Open a Pull Request**
-   - Describe what you changed and why
-   - Reference any related issues
-   - Ensure CI checks pass
-
-### File Naming Conventions
-- Python modules: `lowercase_with_underscores.py`
-- Configuration: All settings centralized in `config.py`
-- Database: SQLite with normalized schema
+- **More synonyms**: extend `MATH_SYNONYMS` dict
+- **Different crawl source**: modify `crawl()` and `is_valid_wiki_url()`
+- **Scoring tweak**: adjust the final score formula in `search()`
+- **BM25 parameters**: change `BM25_K1` and `BM25_B` constants
 
 ---
 
 ## API & Usage
 
-### Running the Web Application
+### Start the Web Application
 
 ```bash
-python app.py
+python main.py
+# Visit http://localhost:5000
 ```
 
-The application will be available at `http://localhost:5000`
+### CLI Commands
 
-### Using the Search Engine Programmatically
+```bash
+python main.py                          # start web server
+python main.py setup                    # initialize/reset database
+python main.py search "linear algebra"  # search from terminal
+python main.py stats                    # show document/term counts
+```
+
+### Programmatic Search
 
 ```python
-from search import Search
-from database import Database
+from search_engine import search, get_stats
 
-# Initialize search engine
-db = Database()
-search = Search(db)
+# Search
+results = search("calculus derivatives", top_k=10)
+for r in results:
+    print(r['title'])        # page title
+    print(r['url'])          # Wikipedia URL
+    print(r['snippet'])      # HTML snippet with <mark> highlights
+    print(r['score'])        # final combined score
+    print(r['bm25_score'])   # raw BM25 component
+    print(r['pagerank'])     # PageRank component
 
-# Perform a search
-results = search.search("calculus", use_semantic=True)
-
-# Results format
-for result in results:
-    print(f"Title: {result['title']}")
-    print(f"Score: {result['score']}")
-    print(f"Snippet: {result['snippet']}")
+# Database statistics
+stats = get_stats()
+print(stats['documents'])    # number of indexed pages
+print(stats['terms'])        # number of unique terms
 ```
 
-### Crawling Wikipedia Data
+### Run a Custom Crawl
 
-```bash
-# Default crawl (1000 pages from Wikipedia)
-python init.py
+```python
+from search_engine import init_db, crawl, save_to_db
 
-# Custom crawl with parameters
-python init.py --max-pages 500 --seed-url "https://en.wikipedia.org/wiki/Calculus"
-
-# Skip crawling (use existing data)
-python init.py --no-crawl
+init_db()
+link_graph, page_content = crawl(
+    seed_url="https://en.wikipedia.org/wiki/Algebra",
+    max_pages=500
+)
+save_to_db(page_content, link_graph)
 ```
 
 ---
 
 ## FAQ
 
-### Installation & Setup
+### Installation
 
-**Q: I get "ModuleNotFoundError" when running the app**
+**Q: ModuleNotFoundError when running the app**
 
-A: You need to install dependencies first:
+Install dependencies (activate your virtual environment first if using one):
+
 ```bash
 pip install -r requirements.txt
-```
-
-Or use the setup script:
-```bash
-# Windows
-setup.bat
-
-# Linux/macOS
-bash setup.sh
-```
-
-**Q: The setup script fails on Windows**
-
-A: Make sure you have:
-1. Python 3.8+ installed
-2. Python in your PATH (check with `python --version`)
-3. Administrator privileges if needed
-
-If issues persist, try manual setup:
-```bash
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-python init.py --no-crawl
 ```
 
 **Q: How do I install for development?**
 
-A: Use dev-install:
 ```bash
-make dev-install
+pip install -r requirements.txt
+pip install black flake8 mypy pytest
 ```
 
-This installs testing and linting tools.
-
-### Database & Indexing
+### Database
 
 **Q: Where is the database file?**
 
-A: The SQLite database is stored as `search_engine.db` in the project root directory. The path is configured in `config.py`.
+`search_engine.db` in the project root, set by `DB_PATH` in `search_engine.py`.
 
 **Q: How do I reset the database?**
 
-A: Delete the database and reinitialize:
 ```bash
+python main.py setup
+# or manually:
 rm search_engine.db
-python init.py --no-crawl
+python main.py
 ```
 
-**Q: How do I crawl Wikipedia?**
+**Q: How do I index more pages?**
 
-A: Run the initialization with crawling:
-```bash
-python init.py
-```
+Edit `max_pages` in the `setup_database()` function in `main.py`:
 
-Or specify custom parameters:
-```bash
-python init.py --max-pages 1000 --seed-url "https://en.wikipedia.org/wiki/Calculus"
-```
-
-**Q: Crawling is very slow - how can I speed it up?**
-
-A:
-1. Reduce max_pages: `python init.py --max-pages 100`
-2. Stop and retry (it continues from where it left off)
-3. The sentence transformer downloads ~60MB on first use - this is one-time
-
-**Q: Can I use existing crawled data?**
-
-A: Yes! Save the crawler data:
 ```python
-from crawler import crawl, save_data
-link_graph, page_content = crawl(seed_url, max_pages=100)
-save_data(link_graph, page_content)
+link_graph, page_content = crawl(seed, max_pages=500)
 ```
 
-Then reuse it:
-```bash
-python init.py --no-crawl
-```
+**Q: Can I use existing data?**
 
-### Using the Search Engine
+Yes. Copy your `search_engine.db` into the project directory and run `python main.py` — it will detect the existing database and skip setup.
+
+### Search
 
 **Q: How do I run the web app?**
 
-A:
 ```bash
-python app.py
+python main.py
+# Opens at http://localhost:5000
 ```
 
-The application opens at `http://localhost:5000`
+**Q: Why does my query return no results?**
+
+The default 100-page crawl covers core Wikipedia mathematics topics. Try simpler queries (`"calculus"`, `"algebra"`) or reinitialize with more pages.
+
+**Q: How does query expansion work?**
+
+Before searching, `expand_query()` splits the query into words and adds any known synonyms from `MATH_SYNONYMS`. For example, `"derivative"` also searches for `"differentiation"`.
 
 ---
 
 ## Contributing
 
-Thank you for your interest in contributing to MathSearch! This section provides guidelines and instructions.
+Contributions are welcome. Please be respectful and constructive in all interactions.
 
-### Code of Conduct
+### Areas for Contribution
 
-Please be respectful and constructive in all interactions. We're building a community that welcomes everyone.
-
-### Getting Started
-
-#### Prerequisites
-
-- Python 3.8+
-- Git
-- Virtual environment (venv, conda, or similar)
-
-#### Areas for Contribution
-
-- Performance optimizations
-- Additional query expansion features
-- Semantic search improvements
-- UI/UX enhancements
-- Documentation and examples
-- Bug reports and fixes
 - Additional mathematical synonyms
+- Performance optimizations (caching, index compression)
+- UI/UX improvements
+- Crawl sources beyond Wikipedia
+- Bug reports and fixes
+- Documentation and examples
+
+### Development Workflow
+
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Make changes and test locally
+4. Run linting: `flake8 main.py search_engine.py`
+5. Format code: `black main.py search_engine.py --line-length=100`
+6. Commit with a clear message
+7. Open a Pull Request
 
 ---
 
 ## Changelog
 
-### [1.0.0] - 2024-05-21
+### [1.0.0] — 2024-05-21
 
 #### Added
-- Initial release of MathSearch - Advanced Mathematical Search Engine
-- BM25 ranking algorithm implementation
-- Hybrid two-stage retrieval with semantic re-ranking
-- Query expansion with spell correction and synonym expansion
-- PageRank computation for link authority scoring
-- Intelligent snippet extraction with context awareness
-- Flask web application with modern UI
-- SQLite database with normalized schema
-- Web crawler for Wikipedia mathematics pages
-- Comprehensive configuration system
-- Command-line search interface
-- REST API for search functionality
 
-#### Core Features
-- **BM25 Ranking**: Industry-standard information retrieval ranking
-- **Semantic Re-ranking**: Optional sentence transformer integration
-- **Query Expansion**: Spell correction and domain-specific synonyms
-- **PageRank**: Link-based authority scoring
-- **Snippet Extraction**: Context-aware result snippets
-- **Web Interface**: Modern, responsive Flask-based UI
+- Initial release of MathSearch
+- BM25 ranking algorithm
+- PageRank authority scoring
+- Synonym-based query expansion
+- Intelligent snippet extraction with term highlighting
+- Flask web application with responsive UI
+- SQLite database with normalized two-table schema
+- Wikipedia web crawler
+- CLI interface (`setup`, `search`, `stats` commands)
+- One-click startup scripts (`start.sh`, `start.bat`)
+- Auto-setup on first run
 
-#### Project Structure
-- `app.py`: Flask web application and routes
-- `search.py`: BM25 and hybrid search implementation
-- `database.py`: SQLite database management
-- `crawler.py`: Wikipedia web crawler
-- `indexer.py`: Inverted index builder
-- `pagerank.py`: PageRank computation
-- `query_expansion.py`: Query processing and expansion
-- `snippets.py`: Snippet extraction and highlighting
-- `config.py`: Centralized configuration
-- `init.py`: Database initialization script
+#### Architecture
 
-#### Documentation
-- `README.md`: Project overview
-- `DOCUMENTATION.md`: Comprehensive guide
-- `LICENSE`: MIT License
-- `requirements.txt`: Python dependencies
-- `setup.py`: Package installation configuration
-- Setup scripts for Windows and Unix/Linux
+Consolidated from a 10-file prototype into two core files:
 
-#### Version History Details
-- Complete refactor from original prototype to production-ready system
-- Renamed files from `prod_*` prefix to clean names
-- Established consistent import structure
-- Added comprehensive documentation
-- Implemented proper error handling
-- Created reproducible setup process
-- Added git repository structure with .gitignore and .gitattributes
+- `search_engine.py` — merges former `database.py`, `crawler.py`, `indexer.py`, `pagerank.py`, `query_expansion.py`, `snippets.py`, `search.py`, `config.py`
+- `main.py` — merges former `app.py` and `init.py`
 
-#### Bug Fixes (Version 1.0.0)
-- **crawler.py (Line 68)**: Fixed `_is_valid_wikipedia_url()` method call
-  - Issue: Function called with `self` in non-class context
-  - Impact: Crawler would fail when filtering URLs
+#### Dependencies Reduced
+
+Removed `sentence-transformers`, `torch`, and `pyspellchecker`. Kept only `Flask`, `requests`, `beautifulsoup4`, `numpy`.
 
 ### [Unreleased]
 
-#### Planned Features
-- LLM-based query expansion (with Ollama integration)
-- Advanced filtering options
-- Search result clustering
-- Faceted search
-- User search history and bookmarks
-- Performance optimizations
-- Advanced caching mechanisms
+#### Planned
+
+- Optional semantic re-ranking (pluggable, off by default)
+- Search result caching
+- Configurable crawl depth
+- Additional domain synonym sets
 - Multi-language support

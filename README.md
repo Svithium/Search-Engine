@@ -1,269 +1,239 @@
-# MathSearch - Advanced Mathematical Search Engine
+# MathSearch - Mathematical Search Engine
 
-A sophisticated search engine optimized for mathematical content with BM25 ranking, semantic re-ranking, and intelligent query expansion.
+A streamlined search engine optimized for mathematical content with BM25 ranking, PageRank authority scoring, and intelligent query expansion.
 
 ## Features
 
 - **BM25 Ranking**: Industry-standard information retrieval ranking algorithm
-- **Hybrid Semantic Re-ranking**: Optional two-stage retrieval using sentence transformers for semantic similarity
-- **Query Expansion**: Spell correction, synonym expansion, and optional LLM-based expansion
-- **Intelligent Snippet Extraction**: Context-aware snippets with relevant sentences around matches
 - **PageRank Scoring**: Link-based authority scoring integrated into results
+- **Query Expansion**: Automatic synonym expansion for math terminology
+- **Intelligent Snippet Extraction**: Context-aware snippets with highlighted matches
 - **Modern Web Interface**: Beautiful, responsive UI built with Flask
-- **Mathematical Synonyms**: Domain-specific synonym expansion for math terminology
+- **Lightweight & Fast**: No heavy ML dependencies — runs on ~10 MB, ~50 MB RAM
 
-## Architecture
-
-The search engine consists of several modular components:
-
-### Core Components
-
-- **app.py**: Flask web application with UI and search endpoints
-- **search.py**: Two-stage BM25 and semantic search implementation
-- **database.py**: SQLite database management with normalized schema
-- **config.py**: Centralized configuration for all tunable parameters
-
-### Data Processing
-
-- **crawler.py**: Web crawler for Wikipedia math pages
-- **indexer.py**: Inverted index builder with BM25 support
-- **pagerank.py**: PageRank computation for link graph authority scoring
-- **snippets.py**: Intelligent snippet extraction from documents
-
-### Query Processing
-
-- **query_expansion.py**: Spell correction and synonym expansion
-
-## Installation
+## Quick Start
 
 ### Prerequisites
 
 - Python 3.8+
 - pip (Python package manager)
 
-### Setup Steps
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd Search-Engine
-   ```
-
-2. **Create a virtual environment** (recommended)
-   ```bash
-   python -m venv venv
-   
-   # On Windows
-   venv\Scripts\activate
-   
-   # On macOS/Linux
-   source venv/bin/activate
-   ```
-
-3. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-## Usage
-
-### Initialize the Search Engine
-
-```python
-from indexer import rebuild_index
-rebuild_index()
-```
-
-This will:
-1. Initialize the SQLite database
-2. Crawl Wikipedia pages (starting from a seed URL)
-3. Build the inverted index with BM25 support
-4. Compute PageRank scores
-5. Save all data to the database
-
-### Run the Web Application
+### Installation
 
 ```bash
-python app.py
+# 1. Clone the repository
+git clone <repository-url>
+cd Search-Engine
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Run
+python main.py
 ```
 
-The application will start on `http://localhost:5000`
+On first run you will be prompted to initialize the database. Say **Y** and it will:
 
-### Perform Searches Programmatically
+1. Crawl ~100 Wikipedia mathematics pages (~2–3 minutes)
+2. Build the inverted index
+3. Compute PageRank scores
+4. Start the web server at **http://localhost:5000**
 
-```python
-from search import search
+Subsequent runs go straight to the web server.
 
-# Perform a search
-results = search("calculus derivatives", top_k=10)
-
-# Results include:
-# - title: Page title
-# - url: Page URL
-# - snippet: Extracted relevant snippet
-# - score: Combined BM25 + semantic score
-# - pagerank: PageRank score
-```
-
-## Configuration
-
-All tunable parameters are centralized in `config.py`:
-
-### BM25 Parameters
-- `BM25_K1`: Term frequency saturation (default: 1.5)
-- `BM25_B`: Length normalization (default: 0.75)
-
-### Hybrid Search
-- `ENABLE_HYBRID`: Enable semantic re-ranking (default: True)
-- `HYBRID_LAMBDA`: Weight for semantic similarity (default: 0.5)
-- `TOP_K_CANDIDATES`: Candidates for re-ranking (default: 100)
-- `SENTENCE_TRANSFORMER_MODEL`: Model name (default: "all-MiniLM-L6-v2")
-
-### Query Expansion
-- `ENABLE_SPELL_CORRECTION`: Enable spell checker (default: True)
-- `ENABLE_SYNONYM_EXPANSION`: Enable synonyms (default: True)
-- `ENABLE_LLM_EXPANSION`: Enable LLM expansion (default: False)
-
-### Snippet Extraction
-- `SNIPPET_LENGTH`: Character context around matches (default: 150)
-- `SNIPPET_CONTEXT_SENTENCES`: Surrounding sentences (default: 2)
-
-## Database Schema
-
-### documents table
-- `id`: Auto-increment document ID
-- `url`: Unique page URL
-- `title`: Page title
-- `content`: Full text content
-- `doc_length`: Total word count
-- `pagerank`: Computed PageRank score
-
-### inverted_index table
-- `word`: Index term
-- `doc_id`: Document ID (foreign key)
-- `tf`: Term frequency in document
-
-## Algorithm Details
-
-### BM25 Scoring
-
-The BM25 (Best Matching 25) algorithm provides relevance scores:
-
-```
-score = Σ IDF(term) * (tf * (k1 + 1)) / (tf + k1 * (1 - b + b * (|D| / avgdl)))
-```
-
-Where:
-- `IDF(term)` = log((N - df + 0.5) / (df + 0.5) + 1)
-- `tf` = term frequency in document
-- `|D|` = document length
-- `avgdl` = average document length
-- `k1`, `b` = tuning parameters
-
-### Hybrid Search
-
-When enabled, BM25 results are re-ranked using semantic similarity:
-
-```
-hybrid_score = (1 - λ) * bm25_score + λ * cosine_similarity
-```
-
-Using sentence-transformers for semantic embeddings.
-
-### PageRank Computation
-
-PageRank is computed using the standard iterative algorithm:
-
-```
-PR(A) = (1 - d) + d * Σ(PR(Ti) / C(Ti))
-```
-
-Where:
-- `d` = damping factor (0.85)
-- `Ti` = pages linking to A
-- `C(Ti)` = outbound link count from Ti
-
-## Development
-
-### Project Structure
-
-```
-Search-Engine/
-├── app.py                    # Flask web application
-├── config.py                 # Configuration parameters
-├── search.py                 # BM25 and hybrid search
-├── database.py               # SQLite database management
-├── crawler.py                # Web crawler
-├── indexer.py                # Index builder
-├── pagerank.py               # PageRank computation
-├── query_expansion.py        # Query processing
-├── snippets.py               # Snippet extraction
-├── requirements.txt          # Python dependencies
-├── .gitignore               # Git ignore rules
-└── README.md                # This file
-```
-
-### Running Tests
+### One-Click Start
 
 ```bash
-python -m pytest
+# Linux / macOS
+bash start.sh
+
+# Windows
+start.bat
 ```
-
-## Performance Tips
-
-1. **Indexing**: The initial crawl and indexing can take time. Use smaller `max_pages` for testing.
-2. **Semantic Re-ranking**: First load of sentence transformer downloads the model (~60MB).
-3. **Database**: Ensure sufficient disk space for SQLite database.
-4. **Tuning**: Adjust BM25 parameters in `config.py` based on your domain.
-
-## Troubleshooting
-
-### Import Errors
-Ensure all files are in the same directory and virtual environment is activated.
-
-### Database Errors
-Delete `search_engine.db` and rebuild the index:
-```bash
-python -c "from indexer import rebuild_index; rebuild_index()"
-```
-
-### Memory Issues with Sentence Transformers
-Disable hybrid search in config.py:
-```python
-ENABLE_HYBRID = False
-```
-
-### Slow Searches
-Reduce `TOP_K_CANDIDATES` in config.py for faster semantic re-ranking.
-
-## Dependencies
-
-- **Flask**: Web framework
-- **requests**: HTTP library
-- **BeautifulSoup4**: HTML parsing
-- **numpy**: Numerical computing
-- **pyspellchecker**: Spell correction
-- **sentence-transformers**: Semantic embeddings
-- **torch**: Deep learning (required by sentence-transformers)
-
-## License
-
-MIT License - See LICENSE file for details
-
-## Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## Contact
-
-For questions or issues, please open a GitHub issue.
 
 ---
 
-**Note**: This search engine is optimized for mathematical content but can be adapted for any domain by adjusting the synonyms dictionary and crawl sources.
+## Commands
+
+```bash
+# Start web server (default)
+python main.py
+
+# Initialize / reset database
+python main.py setup
+
+# Search from the command line
+python main.py search "calculus derivatives"
+
+# Show database statistics
+python main.py stats
+```
+
+---
+
+## Architecture
+
+The entire project is **two Python files**:
+
+| File | Lines | Purpose |
+|---|---|---|
+| `main.py` | ~270 | Flask web app, CLI entry point, auto-setup |
+| `search_engine.py` | ~450 | All core logic: crawler, indexer, PageRank, BM25, snippets, query expansion |
+
+### How It Works
+
+```
+Stage 1 — Crawl      Wikipedia pages downloaded via requests + BeautifulSoup
+Stage 2 — Index      Words tokenized; inverted index built with term frequencies
+Stage 3 — PageRank   Authority scores computed from the link graph (NumPy)
+Stage 4 — Search     Query expanded with synonyms → BM25 scored → PageRank boosted
+Stage 5 — Snippets   Relevant excerpt extracted and query terms highlighted
+Stage 6 — Display    Results rendered in Flask web UI
+```
+
+### Scoring Formula
+
+```
+Final Score = BM25(query, doc) × (1 + PageRank × 10)
+```
+
+BM25 formula:
+
+```
+score = Σ IDF(t) × (tf × (k1 + 1)) / (tf + k1 × (1 − b + b × |D| / avgdl))
+```
+
+---
+
+## Configuration
+
+All tunable parameters live at the top of `search_engine.py`:
+
+```python
+DB_PATH        = "search_engine.db"  # SQLite database path
+BM25_K1        = 1.5                 # Term frequency saturation (range: 1.2–2.0)
+BM25_B         = 0.75                # Length normalization (range: 0–1)
+SNIPPET_LENGTH = 200                 # Characters around the best match
+```
+
+### Mathematical Synonyms
+
+```python
+MATH_SYNONYMS = {
+    "calc":        ["calculus"],
+    "calculus":    ["calc", "integration", "differentiation"],
+    "diff eq":     ["differential equation", "ode"],
+    "integral":    ["integration"],
+    "derivative":  ["differentiation"],
+    "matrix":      ["matrices"],
+    "trig":        ["trigonometry"],
+    "algebra":     ["alg"],
+    "geometry":    ["geom"],
+    "probability": ["prob", "statistics"],
+}
+```
+
+Add your own terms to extend query expansion.
+
+---
+
+## Database Schema
+
+SQLite database (`search_engine.db`) with two tables:
+
+### `documents`
+
+| Column | Type | Description |
+|---|---|---|
+| `id` | INTEGER PK | Auto-increment document ID |
+| `url` | TEXT UNIQUE | Wikipedia page URL |
+| `title` | TEXT | Page title |
+| `content` | TEXT | Full page text |
+| `doc_length` | INTEGER | Word count (for BM25 normalization) |
+| `pagerank` | REAL | Authority score |
+
+### `inverted_index`
+
+| Column | Type | Description |
+|---|---|---|
+| `word` | TEXT PK | Indexed term (lowercase) |
+| `doc_id` | INTEGER PK | Document containing the term |
+| `tf` | REAL | Term frequency in that document |
+
+---
+
+## File Structure
+
+```
+Search-Engine/
+├── main.py            — Entry point and web server
+├── search_engine.py   — Core search engine logic
+├── requirements.txt   — Python dependencies (4 packages)
+├── search_engine.db   — SQLite database (auto-created)
+├── start.sh           — One-click start (Linux/macOS)
+├── start.bat          — One-click start (Windows)
+├── README.md          — This file
+├── README.txt         — Plain-text quick reference
+├── HOW_TO_RUN.md      — Detailed setup guide
+├── DOCUMENTATION.md   — Full technical documentation
+└── LICENSE            — MIT License
+```
+
+---
+
+## Dependencies
+
+| Package | Version | Purpose |
+|---|---|---|
+| Flask | ≥2.3.0 | Web framework |
+| requests | ≥2.31.0 | HTTP client for crawler |
+| beautifulsoup4 | ≥4.12.0 | HTML parsing |
+| numpy | ≥1.24.0 | PageRank matrix computation |
+
+---
+
+## Programmatic Usage
+
+```python
+from search_engine import search, get_stats
+
+# Search
+results = search("calculus derivatives", top_k=10)
+for r in results:
+    print(r['title'], r['score'])
+
+# Stats
+stats = get_stats()
+print(f"{stats['documents']} documents, {stats['terms']} terms")
+```
+
+---
+
+## Troubleshooting
+
+**ModuleNotFoundError** — run `pip install -r requirements.txt`
+
+**Database not found** — run `python main.py setup`
+
+**Port 5000 in use** — kill the other process or edit `main.py` to use a different port
+
+**No results** — ensure the database is initialized and try simpler queries like `"calculus"`
+
+---
+
+## Performance Notes
+
+- Search speed: < 100 ms for typical queries
+- Memory usage: ~50 MB (no ML models loaded)
+- Disk space: ~5 MB database for 100 pages
+- Setup time: ~2–3 minutes for default 100-page crawl
+
+---
+
+## License
+
+MIT License — see `LICENSE` for details.
+
+## Contributing
+
+Contributions welcome! Please fork the repo, create a feature branch, and open a Pull Request. See `DOCUMENTATION.md` for development guidelines.
