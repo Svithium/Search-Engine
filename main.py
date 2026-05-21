@@ -28,131 +28,413 @@ HTML = '''
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MathSearch</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --color-dark: #0b0315;
+            --color-green: #bdcd8a;
+            --color-lavender: #d0c3e4;
+            --color-purple: #8f77aa;
+            --color-dark-purple: #2a0948;
+            --color-text: #2d2d2d;
+            --color-text-light: #666666;
+            --color-border: #e8e6eb;
+        }
+
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+
+        html { scroll-behavior: smooth; }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--color-dark) 0%, var(--color-dark-purple) 50%, #1a0630 100%);
             min-height: 100vh;
             padding: 20px;
+            color: var(--color-text);
         }
-        .container { max-width: 900px; margin: 0 auto; }
+
+        .container { 
+            max-width: 1000px; 
+            margin: 0 auto; 
+        }
+
+        /* Background decorative elements */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(189, 205, 138, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(208, 195, 228, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container { position: relative; z-index: 1; }
+
+        /* Header Section */
         .header {
             text-align: center;
-            color: white;
-            margin-bottom: 40px;
-            padding-top: 40px;
+            margin-bottom: 50px;
+            padding-top: 30px;
+            animation: fadeInDown 0.8s ease-out;
         }
-        .header h1 { font-size: 3em; margin-bottom: 10px; font-weight: 300; }
-        .header .subtitle { font-size: 1.1em; opacity: 0.9; }
+
+        .header h1 { 
+            font-size: 3.5em; 
+            font-weight: 700;
+            margin-bottom: 12px;
+            background: linear-gradient(135deg, var(--color-green) 0%, var(--color-lavender) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -1px;
+        }
+
+        .header .subtitle { 
+            font-size: 1.2em; 
+            color: var(--color-lavender);
+            opacity: 0.9;
+            font-weight: 300;
+            letter-spacing: 0.5px;
+        }
+
+        /* Search Box Section */
+        .search-form {
+            margin-bottom: 50px;
+            animation: fadeInUp 0.8s ease-out 0.2s both;
+        }
+
         .search-box {
-            background: white;
-            border-radius: 50px;
-            padding: 8px 25px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 6px 20px;
+            box-shadow: 0 20px 60px rgba(11, 3, 21, 0.3), 0 0 1px rgba(189, 205, 138, 0.2);
             display: flex;
             align-items: center;
-            margin-bottom: 30px;
+            gap: 12px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(189, 205, 138, 0.15);
+            transition: all 0.3s ease;
         }
+
+        .search-box:focus-within {
+            box-shadow: 0 20px 60px rgba(11, 3, 21, 0.4), 0 0 20px rgba(189, 205, 138, 0.3);
+            border-color: rgba(189, 205, 138, 0.4);
+        }
+
+        .search-icon {
+            color: var(--color-purple);
+            font-size: 20px;
+        }
+
         .search-box input {
             border: none;
             outline: none;
             font-size: 18px;
             flex: 1;
-            padding: 12px;
+            padding: 16px 0;
+            background: transparent;
+            color: var(--color-text);
+            font-weight: 500;
         }
+
+        .search-box input::placeholder {
+            color: rgba(102, 102, 102, 0.5);
+        }
+
         .search-box button {
-            background: #667eea;
-            color: white;
+            background: linear-gradient(135deg, var(--color-green) 0%, var(--color-purple) 100%);
+            color: var(--color-dark);
             border: none;
-            padding: 12px 30px;
-            border-radius: 25px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .search-box button:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-        }
-        .results-container {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-        }
-        .result {
-            border-bottom: 1px solid #eee;
-            padding: 20px 0;
-        }
-        .result:last-child { border-bottom: none; }
-        .result-title {
-            font-size: 1.3em;
-            margin-bottom: 5px;
-        }
-        .result-title a {
-            color: #1a0dab;
-            text-decoration: none;
-        }
-        .result-title a:hover { text-decoration: underline; }
-        .result-url {
-            color: #006621;
-            font-size: 0.9em;
-            margin-bottom: 8px;
-            word-break: break-all;
-        }
-        .result-snippet {
-            color: #545454;
-            line-height: 1.6;
-            margin-bottom: 8px;
-        }
-        .result-snippet mark {
-            background-color: #fff3cd;
-            padding: 2px 4px;
-            border-radius: 3px;
-        }
-        .result-meta {
-            font-size: 0.85em;
-            color: #888;
-        }
-        .score-badge {
-            background: #e8f5e9;
-            color: #2e7d32;
-            padding: 3px 10px;
+            padding: 14px 36px;
             border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            box-shadow: 0 8px 20px rgba(189, 205, 138, 0.3);
         }
+
+        .search-box button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 30px rgba(189, 205, 138, 0.4);
+        }
+
+        .search-box button:active {
+            transform: translateY(-1px);
+        }
+
+        /* Results Section */
+        .results-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(11, 3, 21, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--color-border);
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        .results-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .result-count {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--color-dark-purple);
+        }
+
+        .result-count-num {
+            color: var(--color-green);
+            font-weight: 700;
+        }
+
+        .result {
+            padding: 24px 0;
+            border-bottom: 1px solid var(--color-border);
+            transition: all 0.3s ease;
+            animation: slideInLeft 0.5s ease-out;
+        }
+
+        .result:hover {
+            padding-left: 12px;
+            padding-right: 12px;
+            background: rgba(189, 205, 138, 0.04);
+            border-radius: 8px;
+        }
+
+        .result:last-child { 
+            border-bottom: none; 
+        }
+
+        .result-title {
+            font-size: 1.4em;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .result-title a {
+            color: var(--color-dark-purple);
+            text-decoration: none;
+            transition: all 0.2s ease;
+            background: linear-gradient(120deg, var(--color-dark-purple) 0%, var(--color-purple) 100%);
+            background-size: 0 100%;
+            background-repeat: no-repeat;
+            background-position: 0 100%;
+            padding-bottom: 2px;
+        }
+
+        .result-title a:hover {
+            background-size: 100% 100%;
+            color: var(--color-green);
+        }
+
+        .result-url {
+            color: var(--color-purple);
+            font-size: 0.95em;
+            margin-bottom: 12px;
+            word-break: break-all;
+            font-weight: 500;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+
+        .result:hover .result-url {
+            opacity: 1;
+        }
+
+        .result-snippet {
+            color: var(--color-text-light);
+            line-height: 1.7;
+            margin-bottom: 12px;
+            font-size: 0.95em;
+        }
+
+        .result-snippet mark {
+            background: linear-gradient(120deg, rgba(189, 205, 138, 0.3) 0%, rgba(208, 195, 228, 0.2) 100%);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            color: var(--color-dark-purple);
+        }
+
+        .result-meta {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.85em;
+        }
+
+        .score-badge {
+            background: linear-gradient(135deg, rgba(189, 205, 138, 0.2) 0%, rgba(208, 195, 228, 0.1) 100%);
+            color: var(--color-dark-purple);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 600;
+            border: 1px solid rgba(189, 205, 138, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .result:hover .score-badge {
+            background: linear-gradient(135deg, rgba(189, 205, 138, 0.4) 0%, rgba(208, 195, 228, 0.2) 100%);
+            transform: scale(1.05);
+        }
+
+        /* Empty State */
         .no-results {
             text-align: center;
-            padding: 60px 20px;
-            color: #888;
+            padding: 80px 40px;
         }
+
+        .no-results h2 {
+            font-size: 2em;
+            margin-bottom: 12px;
+            color: var(--color-dark-purple);
+            font-weight: 600;
+        }
+
+        .no-results p {
+            color: var(--color-text-light);
+            font-size: 1.1em;
+        }
+
+        /* Stats Footer */
         .stats {
             text-align: center;
-            color: white;
-            margin-top: 20px;
-            opacity: 0.8;
-            font-size: 0.9em;
+            margin-top: 40px;
+            padding: 24px;
+            color: var(--color-lavender);
+            font-size: 0.95em;
+            font-weight: 500;
+            animation: fadeIn 0.8s ease-out 0.4s both;
+        }
+
+        .stats-divider {
+            color: var(--color-green);
+            margin: 0 8px;
+            font-weight: 700;
+        }
+
+        /* Animations */
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2.5em;
+            }
+
+            .header .subtitle {
+                font-size: 1em;
+            }
+
+            .search-box {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0;
+            }
+
+            .search-icon {
+                display: none;
+            }
+
+            .search-box input {
+                padding: 14px 16px;
+                text-align: center;
+            }
+
+            .search-box button {
+                padding: 12px 20px;
+                border-radius: 8px;
+            }
+
+            .results-container {
+                padding: 24px;
+            }
+
+            .result-title {
+                font-size: 1.2em;
+            }
+
+            .result-snippet {
+                font-size: 0.9em;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>🔢 MathSearch</h1>
-            <p class="subtitle">Mathematical Search Engine</p>
+            <h1>∫ MathSearch</h1>
+            <p class="subtitle">Discover Mathematical Knowledge</p>
         </div>
         
-        <form method="GET" action="/search">
+        <form method="GET" action="/search" class="search-form">
             <div class="search-box">
+                <span class="search-icon">🔍</span>
                 <input type="text" name="q" value="{{ query }}" 
-                       placeholder="Search mathematics..." autofocus>
+                       placeholder="Explore calculus, algebra, geometry..." autofocus>
                 <button type="submit">Search</button>
             </div>
         </form>
         
         {% if results %}
         <div class="results-container">
-            <div style="color: #70757a; margin-bottom: 20px;">
-                Found {{ results|length }} results
+            <div class="results-header">
+                <span class="result-count">Found <span class="result-count-num">{{ results|length }}</span> result{{ "s" if results|length != 1 else "" }}</span>
             </div>
             
             {% for result in results %}
@@ -163,7 +445,7 @@ HTML = '''
                 <div class="result-url">{{ result.url }}</div>
                 <div class="result-snippet">{{ result.snippet|safe }}</div>
                 <div class="result-meta">
-                    <span class="score-badge">Score: {{ "%.3f"|format(result.score) }}</span>
+                    <span class="score-badge">Relevance: {{ "%.1f"|format(result.score * 100) }}%</span>
                 </div>
             </div>
             {% endfor %}
@@ -172,13 +454,13 @@ HTML = '''
         <div class="results-container">
             <div class="no-results">
                 <h2>No results found</h2>
-                <p>Try different keywords</p>
+                <p>Try searching with different keywords</p>
             </div>
         </div>
         {% endif %}
         
         <div class="stats">
-            {{ stats.documents }} documents • {{ stats.terms }} terms indexed
+            {{ stats.documents }} documents <span class="stats-divider">•</span> {{ stats.terms }} terms indexed
         </div>
     </div>
 </body>
